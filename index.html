@@ -230,6 +230,46 @@ let loopRows=ROW_CONFIGS.map((_,i)=>({index:i,enabled:false,systemId:null,costId
 const TYPE_LABELS={system:'Sistema',resource:'Recurso',action:'Acción'};
 const TYPE_BADGES={system:'t-system',resource:'t-resource',action:'t-action'};
 
+function getElementIconSrc(elem){
+  return elem.iconData||elem.iconPath||'';
+}
+
+function createElementImage(src){
+  if(!src) return null;
+  const img=new Image();
+  img.src=src;
+  return img;
+}
+
+async function loadDefaultElements(){
+  try{
+    const res=await fetch('./data/elements.json');
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const defaults=await res.json();
+    if(!Array.isArray(defaults)) throw new Error('Formato inválido: se esperaba un array');
+
+    defaults.forEach(item=>{
+      if(!item||typeof item!=='object') return;
+      const name=typeof item.name==='string'?item.name.trim():'';
+      const type=typeof item.type==='string'?item.type:'';
+      if(!name||!TYPE_LABELS[type]) return;
+
+      const iconPath=typeof item.icon==='string'&&item.icon.trim()?item.icon.trim():null;
+      const elem={
+        id:nextId++,
+        name,
+        type,
+        iconPath,
+        iconData:null,
+        imgObj:createElementImage(iconPath)
+      };
+      elements.push(elem);
+    });
+  }catch(err){
+    console.warn('No se pudieron cargar los elementos por defecto:',err);
+  }
+}
+
 function previewIcon(e){
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader();
@@ -245,8 +285,7 @@ function addElement(){
   const name=document.getElementById('newName').value.trim();
   const type=document.getElementById('newType').value;
   if(!name){alert('Introduce un nombre'); return;}
-  const elem={id:nextId++,name,type,iconData:currentIconData,imgObj:null};
-  if(currentIconData){const img=new Image(); img.src=currentIconData; elem.imgObj=img;}
+  const elem={id:nextId++,name,type,iconPath:null,iconData:currentIconData,imgObj:createElementImage(currentIconData)};
   elements.push(elem);
   currentIconData=null;
   document.getElementById('newName').value='';
@@ -274,7 +313,7 @@ function renderElementsTable(){
   c.innerHTML=`<table class="elem-table">
     <tr><th>Icono</th><th>Nombre</th><th>Tipo</th><th></th></tr>
     ${elements.map(e=>`<tr>
-      <td>${e.iconData?`<img class="elem-thumb" src="${e.iconData}">`:'<div class="elem-thumb-ph">?</div>'}</td>
+      <td>${getElementIconSrc(e)?`<img class="elem-thumb" src="${getElementIconSrc(e)}">`:'<div class="elem-thumb-ph">?</div>'}</td>
       <td style="font-weight:600;font-size:13px">${e.name}</td>
       <td><span class="type-badge ${TYPE_BADGES[e.type]}">${TYPE_LABELS[e.type]}</span></td>
       <td><button class="btn-danger" onclick="removeElement(${e.id})">✕</button></td>
@@ -318,7 +357,7 @@ function renderLoopRows(){
 function ssHtml(ri,field,selId,type){
   const el=selId?getElem(selId):null;
   return `<div class="single-sel" onclick="openSingle(event,${ri},'${field}','${type}')">
-    ${el?`${el.iconData?`<img class="ss-icon" src="${el.iconData}">`:''}
+    ${el?`${getElementIconSrc(el)?`<img class="ss-icon" src="${getElementIconSrc(el)}">`:''}
       <span class="ss-name">${el.name}</span>
       <span class="ss-clear" onclick="event.stopPropagation();clearSS(${ri},'${field}')">✕</span>`
     :`<span class="ss-ph">Seleccionar...</span>`}
@@ -330,7 +369,7 @@ function msHtml(ri,field,ids,type){
   return `<div class="multi-sel">
     <div class="multi-tags">
       ${elems.map(e=>`<div class="m-tag">
-        ${e.iconData?`<img src="${e.iconData}">`:''}
+        ${getElementIconSrc(e)?`<img src="${getElementIconSrc(e)}">`:''}
         <span>${e.name}</span>
         <span class="rm" onclick="removeMs(${ri},'${field}',${e.id})">✕</span>
       </div>`).join('')}
@@ -351,7 +390,7 @@ function openSingle(event,ri,f,type){
   const rect=event.currentTarget.getBoundingClientRect();
   pp.innerHTML=`${!filtered.length?`<div class="dp-empty">Sin ${TYPE_LABELS[type]}</div>`:''}
     ${filtered.map(e=>`<div class="dp-item" onclick="setSS(${ri},'${f}',${e.id})">
-      ${e.iconData?`<img src="${e.iconData}">`:'<div class="dp-ph">?</div>'}
+      ${getElementIconSrc(e)?`<img src="${getElementIconSrc(e)}">`:'<div class="dp-ph">?</div>'}
       <span>${e.name}</span></div>`).join('')}
     <div class="dp-remove" onclick="clearSS(${ri},'${f}');closeDD()">✕ Limpiar</div>`;
   posDD(pp,rect);
@@ -365,7 +404,7 @@ function openMulti(event,ri,f,type){
   const rect=event.currentTarget.getBoundingClientRect();
   pp.innerHTML=`${!avail.length?`<div class="dp-empty">No hay más ${TYPE_LABELS[type]}</div>`:''}
     ${avail.map(e=>`<div class="dp-item" onclick="addMs(${ri},'${f}',${e.id})">
-      ${e.iconData?`<img src="${e.iconData}">`:'<div class="dp-ph">?</div>'}
+      ${getElementIconSrc(e)?`<img src="${getElementIconSrc(e)}">`:'<div class="dp-ph">?</div>'}
       <span>${e.name}</span></div>`).join('')}`;
   posDD(pp,rect);
 }
@@ -690,9 +729,13 @@ function downloadCanvas(){
 }
 
 // ==================== INIT ====================
-renderLoopRows();
-renderCanvas();
-applyScale();
+(async function init(){
+  await loadDefaultElements();
+  renderElementsTable();
+  renderLoopRows();
+  renderCanvas();
+  applyScale();
+})();
 </script>
 </body>
 </html>
