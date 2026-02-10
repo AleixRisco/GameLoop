@@ -624,13 +624,23 @@ function drawHead(ctx,x,y,angle,color){
   ctx.closePath(); ctx.fill(); ctx.restore();
 }
 
+function tintFromStroke(stroke,opacity=0.2){
+  const m=/^#?([0-9a-f]{6})$/i.exec(stroke||'');
+  if(!m) return `rgba(255,255,255,${opacity})`;
+  const hex=m[1];
+  const r=parseInt(hex.slice(0,2),16);
+  const g=parseInt(hex.slice(2,4),16);
+  const b=parseInt(hex.slice(4,6),16);
+  return `rgba(${r},${g},${b},${opacity})`;
+}
+
 // ---- Multi-icon box ----
 function drawBox(ctx,x,y,w,h,items,stroke){
   ctx.save();
   ctx.shadowColor='rgba(0,0,0,0.1)'; ctx.shadowBlur=8;
-  rr(ctx,x,y,w,h,10); ctx.fillStyle='#ffffff'; ctx.fill();
+  rr(ctx,x,y,w,h,10); ctx.fillStyle=tintFromStroke(stroke,0.22); ctx.fill();
   ctx.restore();
-  ctx.strokeStyle=stroke; ctx.lineWidth=2.5;
+  ctx.strokeStyle=stroke; ctx.lineWidth=3.5;
   rr(ctx,x,y,w,h,10); ctx.stroke();
 
   if(!items.length) return;
