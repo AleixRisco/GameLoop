@@ -1,711 +1,698 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Loop Generator</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        :root {
-            --color-bg: #f4f4f9;
-            --color-text: #333;
-            --color-system: #e0e0e0;
-            --color-cost: #ffcccc; /* Red-ish */
-            --color-action: #fff4cc; /* Yellow-ish */
-            --color-component: #e6ccff; /* Purple-ish */
-            --color-reward: #ccffcc; /* Green-ish */
-            --color-player: #ffeb3b; /* Bright Yellow */
-            --border-color: #333;
-            --border-radius: 8px;
-            --spacing: 10px;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Game Loop Builder</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0c12;--panel:#111520;--panel2:#181e2d;
+  --border:#252f45;--border2:#2e3d5c;
+  --accent:#4d8bff;--gold:#f5a623;
+  --green:#2ed573;--red:#ff4757;
+  --text:#dde3f0;--text-dim:#6b7a9e;--text-dimmer:#3d4e6e;
+}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 0;
-            background-color: var(--color-bg);
-            color: var(--color-text);
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+header{background:var(--panel);border-bottom:2px solid var(--border2);padding:0 20px;display:flex;align-items:center;gap:16px;height:52px;flex-shrink:0}
+.logo{font-family:'Orbitron',monospace;font-size:17px;font-weight:900;letter-spacing:3px;background:linear-gradient(135deg,var(--accent),#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.logo-sub{font-size:10px;letter-spacing:4px;color:var(--text-dim);font-weight:600}
+.header-sep{flex:1}
+.game-name-input{background:transparent;border:none;border-bottom:1px solid var(--border2);color:var(--text);font-family:'Orbitron',monospace;font-size:13px;font-weight:600;letter-spacing:2px;padding:4px 8px;outline:none;width:240px;text-align:center}
+.game-name-input::placeholder{color:var(--text-dimmer);font-size:11px}
+.btn{padding:8px 20px;border:none;border-radius:6px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:700;font-size:13px;letter-spacing:1px;transition:all .2s}
+.btn:hover{opacity:.85;transform:translateY(-1px)}
+.btn-render{background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff}
+.btn-download{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}
 
-        /* Sidebar: Controls */
-        #controls {
-            width: 400px;
-            background: #fff;
-            border-right: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            overflow-y: auto;
-            padding: 20px;
-            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-            z-index: 10;
-        }
+.main{display:flex;flex:1;overflow:hidden}
 
-        h1, h2, h3 { margin-top: 0; }
+.left{width:460px;min-width:460px;background:var(--panel);border-right:2px solid var(--border2);display:flex;flex-direction:column;overflow:hidden}
+.tabs{display:flex;border-bottom:1px solid var(--border)}
+.tab{flex:1;padding:11px 6px;text-align:center;font-size:12px;font-weight:700;letter-spacing:1.5px;cursor:pointer;color:var(--text-dim);border-bottom:2px solid transparent;transition:all .2s;text-transform:uppercase}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(77,139,255,.05)}
+.tab-content{display:none;flex-direction:column;overflow-y:auto;padding:14px;gap:10px;flex:1}
+.tab-content.active{display:flex}
 
-        .section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+.sec-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--accent);text-transform:uppercase;padding:4px 0 8px;border-bottom:1px solid var(--border)}
+.btn-sm{padding:7px 14px;border-radius:5px;font-size:12px;letter-spacing:.5px;cursor:pointer;border:none;font-family:'Rajdhani',sans-serif;font-weight:700;transition:all .2s}
+.btn-add{background:var(--accent);color:#fff}
+.btn-add:hover{background:#3a77ee}
+.btn-danger{background:transparent;color:var(--red);border:1px solid var(--red);padding:3px 7px;font-size:10px;border-radius:3px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-weight:600;transition:all .2s}
+.btn-danger:hover{background:rgba(255,71,87,.1)}
 
-        /* Forms */
-        .form-group { margin-bottom: 10px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input[type="text"], select, input[type="file"] {
-            width: 100%;
-            padding: 8px;
-            box-sizing: border-box;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        button {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 15px;
-            border-radius: 4px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 5px;
-        }
-        button:hover { background: #0056b3; }
+.elem-table{width:100%;border-collapse:collapse;font-size:12px}
+.elem-table th{background:var(--panel2);color:var(--text-dim);padding:7px 8px;text-align:left;font-weight:700;letter-spacing:.5px;font-size:10px;border-bottom:1px solid var(--border);text-transform:uppercase}
+.elem-table td{padding:6px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.elem-table tr:hover td{background:rgba(255,255,255,.02)}
+.type-badge{display:inline-block;padding:2px 8px;border-radius:3px;font-size:10px;font-weight:700;letter-spacing:.5px}
+.t-system{background:#0d2440;color:#5ba0ff}
+.t-resource{background:#0d2e14;color:#4ef580}
+.t-action{background:#2a2200;color:#ffd070}
+.elem-thumb{width:30px;height:30px;border-radius:5px;object-fit:cover;background:var(--panel2);border:1px solid var(--border)}
+.elem-thumb-ph{width:30px;height:30px;border-radius:5px;background:var(--panel2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:14px;color:var(--text-dimmer)}
+.empty-msg{color:var(--text-dimmer);font-size:12px;text-align:center;padding:20px;border:1px dashed var(--border);border-radius:6px}
 
-        .element-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 5px;
-            margin-top: 10px;
-        }
-        .element-item {
-            border: 1px solid #ddd;
-            padding: 5px;
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            font-size: 0.8em;
-            background: #f9f9f9;
-        }
-        .element-item img {
-            width: 20px;
-            height: 20px;
-            margin-right: 5px;
-            object-fit: contain;
-        }
-        .element-item .delete-btn {
-            margin-left: 5px;
-            color: red;
-            cursor: pointer;
-            font-weight: bold;
-        }
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:11px;font-weight:600;color:var(--text-dim);letter-spacing:.5px}
+.form-ctrl{background:var(--panel2);border:1px solid var(--border);border-radius:5px;padding:7px 10px;color:var(--text);font-family:'Rajdhani',sans-serif;font-size:13px;outline:none;transition:border-color .2s;width:100%}
+.form-ctrl:focus{border-color:var(--accent)}
+select.form-ctrl option{background:var(--panel2)}
+.form-row{display:flex;gap:8px}
+.form-row .form-group{flex:1}
+.icon-upload-area{border:2px dashed var(--border2);border-radius:8px;padding:12px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:12px}
+.icon-upload-area:hover{border-color:var(--accent);background:rgba(77,139,255,.05)}
+.icon-preview{width:50px;height:50px;border-radius:7px;object-fit:cover;border:1px solid var(--border);display:none}
+.icon-preview.visible{display:block}
+.icon-upload-label{font-size:12px;color:var(--text-dim)}
+.icon-upload-label span{color:var(--accent);font-weight:600}
 
-        /* Configuration Table */
-        .config-row {
-            background: #fdfdfd;
-            border: 1px solid #eee;
-            padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        .config-row h4 { margin: 0 0 5px 0; font-size: 0.9em; color: #666; }
-        .config-row select { margin-bottom: 5px; font-size: 0.9em; }
+.loop-row{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.loop-row.disabled{opacity:.4}
+.loop-row-head{display:flex;align-items:center;gap:8px}
+.loop-num{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;background:var(--accent)}
+.loop-pos-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:2px 8px;border-radius:3px;background:var(--panel);color:var(--text-dim)}
+.loop-toggle{margin-left:auto;cursor:pointer;font-size:10px;font-weight:600;letter-spacing:.5px;padding:3px 10px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--text-dim);transition:all .2s;font-family:'Rajdhani',sans-serif}
+.loop-toggle.on{border-color:var(--green);color:var(--green);background:rgba(46,213,115,.08)}
+.loop-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.loop-field{display:flex;flex-direction:column;gap:3px}
+.loop-field label{font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:.5px}
+.lf-opt{color:var(--text-dimmer);font-size:9px;font-style:italic;margin-left:3px}
 
-        /* Main: Visualization */
-        #main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #eef;
-            position: relative;
-        }
+.multi-sel{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px;min-height:32px}
+.multi-tags{display:flex;flex-wrap:wrap;gap:3px;align-items:center}
+.m-tag{background:var(--panel);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;font-size:10px;display:flex;align-items:center;gap:3px}
+.m-tag img{width:14px;height:14px;border-radius:2px;object-fit:cover}
+.m-tag .rm{cursor:pointer;color:var(--red);font-size:11px;line-height:1}
+.m-add-btn{font-size:10px;color:var(--accent);cursor:pointer;padding:2px 6px;border:1px dashed var(--border2);border-radius:3px;white-space:nowrap;transition:border .15s}
+.m-add-btn:hover{border-color:var(--accent)}
+.single-sel{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:4px 8px;height:32px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:border .15s;font-size:11px}
+.single-sel:hover{border-color:var(--border2)}
+.ss-icon{width:18px;height:18px;border-radius:3px;object-fit:cover}
+.ss-name{flex:1;color:var(--text)}
+.ss-ph{flex:1;color:var(--text-dimmer)}
+.ss-clear{color:var(--red);font-size:12px;cursor:pointer;padding:0 2px}
 
-        #toolbar {
-            padding: 10px;
-            background: #fff;
-            border-bottom: 1px solid #ccc;
-            display: flex;
-            justify-content: flex-end;
-        }
+.dropdown-popup{position:fixed;background:var(--panel);border:1px solid var(--border2);border-radius:6px;z-index:500;box-shadow:0 8px 32px rgba(0,0,0,.6);overflow:hidden;min-width:160px;max-height:220px;overflow-y:auto}
+.dp-item{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;font-size:12px;transition:background .12s}
+.dp-item:hover{background:rgba(77,139,255,.12)}
+.dp-item img{width:22px;height:22px;border-radius:4px;object-fit:cover}
+.dp-ph{width:22px;height:22px;border-radius:4px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:12px}
+.dp-empty{padding:12px;font-size:11px;color:var(--text-dimmer);text-align:center}
+.dp-remove{padding:7px 10px;font-size:11px;color:var(--red);cursor:pointer;border-top:1px solid var(--border)}
+.dp-remove:hover{background:rgba(255,71,87,.1)}
 
-        #canvas-wrapper {
-            flex: 1;
-            overflow: auto;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        /* The Game Loop Diagram */
-        #game-loop-container {
-            width: 1400px;
-            height: 900px;
-            background: white;
-            position: relative;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            /* Grid Layout for the 4 quadrants */
-            display: grid;
-            grid-template-columns: 1fr 150px 1fr;
-            grid-template-rows: 1fr 150px 1fr;
-            /*
-               TL (0,0)  Top (0,1)   TR (0,2)
-               Left(1,0) Center(1,1) Right(1,2)
-               BL (2,0)  Bot (2,1)   BR (2,2)
-            */
-        }
-
-        .center-zone {
-            grid-column: 2;
-            grid-row: 2;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 5;
-        }
-
-        .player-node {
-            width: 120px;
-            height: 120px;
-            background: var(--color-player);
-            border: 3px solid var(--border-color);
-            border-radius: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            z-index: 2;
-            position: relative;
-        }
-        .player-node img { width: 60px; height: 60px; margin-bottom: 5px; object-fit: contain; }
-
-        /* Quadrants */
-        .quadrant {
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-around; /* Space out the 2 branches */
-        }
-
-        .quadrant-tl { grid-column: 1; grid-row: 1; align-items: flex-end; } /* Top Left */
-        .quadrant-tr { grid-column: 3; grid-row: 1; align-items: flex-start; } /* Top Right */
-        .quadrant-bl { grid-column: 1; grid-row: 3; align-items: flex-end; } /* Bottom Left */
-        .quadrant-br { grid-column: 3; grid-row: 3; align-items: flex-start; } /* Bottom Right */
-
-        /* Branches */
-        .branch {
-            display: flex;
-            align-items: center;
-            gap: 30px; /* Increased gap for arrows */
-            position: relative;
-            margin: 10px 0;
-        }
-
-        /* Direction handling */
-        .quadrant-tl .branch, .quadrant-bl .branch {
-            flex-direction: row-reverse;
-        }
-
-        .quadrant-tr .branch, .quadrant-br .branch {
-            flex-direction: row;
-        }
-
-        /* Nodes in branch */
-        .node {
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px;
-            background: white;
-            min-width: 60px;
-            min-height: 60px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8em;
-            text-align: center;
-            position: relative;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            z-index: 2;
-        }
-
-        .node img { width: 32px; height: 32px; object-fit: contain; margin-bottom: 2px; }
-
-        .node-system { background: var(--color-system); width: 80px; }
-        .node-action { background: var(--color-action); width: 80px; }
-        .node-component { background: var(--color-component); width: 80px; }
-
-        /* Container Nodes (Cost/Reward) */
-        .node-container {
-            display: flex;
-            gap: 5px;
-            padding: 5px;
-            border-radius: 12px; /* Pill shape container */
-            align-items: center;
-            min-width: 60px;
-            min-height: 50px;
-            justify-content: center;
-            z-index: 2;
-            position: relative;
-        }
-        .node-cost { background: var(--color-cost); border: 2px solid #d32f2f; }
-        .node-reward { background: var(--color-reward); border: 2px solid #388e3c; }
-
-        .sub-item {
-            background: white;
-            border: 1px solid #ccc;
-            border-radius: 50%;
-            width: 36px;
-            height: 36px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .sub-item img { width: 24px; height: 24px; margin: 0; }
-
-        /* SVG Overlay for Arrows */
-        #arrows-svg {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1; /* Behind nodes */
-        }
-
-        /* Multi-select styling shim */
-        .multi-select-container {
-            max-height: 100px;
-            overflow-y: auto;
-            border: 1px solid #ddd;
-            padding: 5px;
-            background: white;
-        }
-        .multi-select-option {
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            padding: 2px 0;
-        }
-        .multi-select-option input { width: auto; }
-
-    </style>
+.right{flex:1;display:flex;flex-direction:column;background:var(--bg);overflow:hidden}
+.preview-bar{background:var(--panel);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.preview-bar-title{font-family:'Orbitron',monospace;font-size:11px;letter-spacing:2px;color:var(--text-dim)}
+.scale-wrap{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text-dim)}
+.scale-input{background:var(--panel2);border:1px solid var(--border);border-radius:4px;padding:3px 6px;color:var(--text);width:55px;font-size:12px;outline:none;text-align:center}
+.preview-wrap{flex:1;overflow:auto;display:flex;align-items:flex-start;justify-content:flex-start;padding:24px;background:radial-gradient(ellipse at center,#0e1425 0%,#0a0c12 70%)}
+canvas{display:block;border-radius:6px;box-shadow:0 4px 40px rgba(0,0,0,.7)}
+</style>
 </head>
 <body>
 
-<div id="controls">
-    <h2>Game Loop Builder</h2>
+<header>
+  <div>
+    <div class="logo">GAME LOOP</div>
+    <div class="logo-sub">BUILDER</div>
+  </div>
+  <div class="header-sep"></div>
+  <input class="game-name-input" id="gameName" placeholder="NOMBRE DEL JUEGO" value="MY GAME">
+  <button class="btn btn-render" onclick="renderCanvas()">⚡ RENDERIZAR</button>
+  <button class="btn btn-download" onclick="downloadCanvas()">⬇ DESCARGAR PNG</button>
+</header>
 
-    <div class="section">
-        <h3>1. Create Elements</h3>
-        <div class="form-group">
-            <label>Type</label>
-            <select id="el-type">
-                <option value="system">System</option>
-                <option value="cost">Cost (Red)</option>
-                <option value="action">Action</option>
-                <option value="component">Component</option>
-                <option value="reward">Reward (Green)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Name</label>
-            <input type="text" id="el-name" placeholder="E.g., Gold, Shop, Attack">
-        </div>
-        <div class="form-group">
-            <label>Icon (Square)</label>
-            <input type="file" id="el-icon" accept="image/*">
-        </div>
-        <button onclick="addElement()">Add Element</button>
-
-        <div id="element-list" class="element-list">
-            <!-- Added elements will appear here -->
-        </div>
+<div class="main">
+  <div class="left">
+    <div class="tabs">
+      <div class="tab active" onclick="switchTab('elements')">🎨 Elementos</div>
+      <div class="tab" onclick="switchTab('loop')">🔄 Game Loop</div>
     </div>
 
-    <div class="section">
-        <h3>2. Configuration</h3>
-        <div id="config-rows">
-            <!-- 8 Configuration Rows will be generated here -->
+    <div class="tab-content active" id="tab-elements">
+      <div class="sec-title">Crear Elemento</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>NOMBRE</label>
+          <input class="form-ctrl" id="newName" placeholder="Soft Currency..." maxlength="24">
         </div>
+        <div class="form-group">
+          <label>TIPO</label>
+          <select class="form-ctrl" id="newType">
+            <option value="system">Sistema</option>
+            <option value="resource">Recurso</option>
+            <option value="action">Acción</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>ICONO (imagen cuadrada)</label>
+        <div class="icon-upload-area" onclick="document.getElementById('iconFile').click()">
+          <img class="icon-preview" id="iconPreview">
+          <div>
+            <div class="icon-upload-label"><span>Clic para subir</span> imagen de icono</div>
+            <div style="font-size:10px;color:var(--text-dimmer);margin-top:3px">PNG, JPG</div>
+          </div>
+        </div>
+        <input type="file" id="iconFile" accept="image/*" style="display:none" onchange="previewIcon(event)">
+      </div>
+      <button class="btn-sm btn-add" onclick="addElement()" style="align-self:flex-start">+ Añadir Elemento</button>
+
+      <div class="sec-title" style="margin-top:4px">Elementos Creados</div>
+      <div id="elementsContainer">
+        <div class="empty-msg">Sin elementos aún.<br>Crea los primeros arriba.</div>
+      </div>
     </div>
+
+    <div class="tab-content" id="tab-loop">
+      <div class="sec-title" style="font-size:9px">8 sistemas disponibles · activa los que quieras usar</div>
+      <div id="loopRowsContainer"></div>
+    </div>
+  </div>
+
+  <div class="right">
+    <div class="preview-bar">
+      <span class="preview-bar-title">PREVIEW</span>
+      <div class="scale-wrap">
+        <span>Zoom</span>
+        <input class="scale-input" id="scaleInput" type="number" value="70" min="20" max="150" step="5" onchange="applyScale()">
+        <span>%</span>
+      </div>
+      <div style="flex:1"></div>
+      <span style="font-size:11px;color:var(--text-dimmer)">1600 × 900 px</span>
+    </div>
+    <div class="preview-wrap" id="previewWrap">
+      <canvas id="gameCanvas" width="1600" height="900"></canvas>
+    </div>
+  </div>
 </div>
 
-<div id="main">
-    <div id="toolbar">
-        <button onclick="downloadImage()" style="width: auto; background: #28a745;">Download Image</button>
-    </div>
-    <div id="canvas-wrapper">
-        <div id="game-loop-container">
-            <svg id="arrows-svg">
-                <defs>
-                    <marker id="arrowhead" markerWidth="10" markerHeight="7"
-                    refX="9" refY="3.5" orient="auto">
-                      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
-                    </marker>
-                </defs>
-            </svg>
-
-            <!-- Quadrants -->
-            <div class="quadrant quadrant-tl" id="quad-tl"></div>
-            <div class="quadrant quadrant-tr" id="quad-tr"></div>
-            <div class="quadrant quadrant-bl" id="quad-bl"></div>
-            <div class="quadrant quadrant-br" id="quad-br"></div>
-
-            <!-- Center Player -->
-            <div class="center-zone">
-                <div class="player-node" id="player-node">
-                    <span>PLAYER</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
+<div class="dropdown-popup" id="dropdownPopup" style="display:none"></div>
 
 <script>
-    // State
-    const state = {
-        elements: [], // { id, type, name, icon }
-        // 8 Slots: 2 TL, 2 TR, 2 BL, 2 BR
-        slots: [
-            { id: 'tl1', label: 'Top Left 1', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'tl2', label: 'Top Left 2', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'tr1', label: 'Top Right 1', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'tr2', label: 'Top Right 2', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'bl1', label: 'Bottom Left 1', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'bl2', label: 'Bottom Left 2', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'br1', label: 'Bottom Right 1', system: null, costs: [], action: null, component: null, rewards: [] },
-            { id: 'br2', label: 'Bottom Right 2', system: null, costs: [], action: null, component: null, rewards: [] }
-        ]
-    };
+// ==================== CONSTANTS ====================
+const CANVAS_W=1600, CANVAS_H=900;
+const TITLE_H=62;
+const CX=CANVAS_W/2, CY=490;
 
-    // Utils
-    function generateId() {
-        return '_' + Math.random().toString(36).substr(2, 9);
+const NODE_S=72, BOX_H=72, ICON_S=48, ITEM_W=64, BOX_PAD=14, GAP=20;
+const PLAYER_R=54;
+const OUTER_MARGIN=44;   // how close to canvas edge the return lane goes
+const PLAYER_STOP=18;    // extra gap between return arrow tip and player circle
+
+const C_BLACK='#222222', C_RED='#cc2200', C_GREEN='#007a35';
+const C_BLUE='#1655cc', C_AMBER='#b86e00';
+
+// ==================== STATE ====================
+let elements=[], nextId=1, currentIconData=null;
+
+const ROW_CONFIGS=[
+  {label:'TL-1',side:'left', y:175},
+  {label:'TL-2',side:'left', y:340},
+  {label:'TR-1',side:'right',y:175},
+  {label:'TR-2',side:'right',y:340},
+  {label:'BR-1',side:'right',y:645},
+  {label:'BR-2',side:'right',y:810},
+  {label:'BL-1',side:'left', y:645},
+  {label:'BL-2',side:'left', y:810},
+];
+
+let loopRows=ROW_CONFIGS.map((_,i)=>({index:i,enabled:false,systemId:null,costIds:[],actionId:null,rewardIds:[]}));
+
+// ==================== ELEMENTS ====================
+const TYPE_LABELS={system:'Sistema',resource:'Recurso',action:'Acción'};
+const TYPE_BADGES={system:'t-system',resource:'t-resource',action:'t-action'};
+
+function previewIcon(e){
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    currentIconData=ev.target.result;
+    const p=document.getElementById('iconPreview');
+    p.src=currentIconData; p.classList.add('visible');
+  };
+  r.readAsDataURL(f);
+}
+
+function addElement(){
+  const name=document.getElementById('newName').value.trim();
+  const type=document.getElementById('newType').value;
+  if(!name){alert('Introduce un nombre'); return;}
+  const elem={id:nextId++,name,type,iconData:currentIconData,imgObj:null};
+  if(currentIconData){const img=new Image(); img.src=currentIconData; elem.imgObj=img;}
+  elements.push(elem);
+  currentIconData=null;
+  document.getElementById('newName').value='';
+  document.getElementById('iconPreview').classList.remove('visible');
+  document.getElementById('iconFile').value='';
+  renderElementsTable(); renderLoopRows();
+}
+
+function removeElement(id){
+  elements=elements.filter(e=>e.id!==id);
+  loopRows.forEach(row=>{
+    if(row.systemId===id) row.systemId=null;
+    if(row.actionId===id) row.actionId=null;
+    row.costIds=row.costIds.filter(x=>x!==id);
+    row.rewardIds=row.rewardIds.filter(x=>x!==id);
+  });
+  renderElementsTable(); renderLoopRows();
+}
+
+function getElem(id){return elements.find(e=>e.id===id)||null}
+
+function renderElementsTable(){
+  const c=document.getElementById('elementsContainer');
+  if(!elements.length){c.innerHTML='<div class="empty-msg">Sin elementos aún.</div>'; return;}
+  c.innerHTML=`<table class="elem-table">
+    <tr><th>Icono</th><th>Nombre</th><th>Tipo</th><th></th></tr>
+    ${elements.map(e=>`<tr>
+      <td>${e.iconData?`<img class="elem-thumb" src="${e.iconData}">`:'<div class="elem-thumb-ph">?</div>'}</td>
+      <td style="font-weight:600;font-size:13px">${e.name}</td>
+      <td><span class="type-badge ${TYPE_BADGES[e.type]}">${TYPE_LABELS[e.type]}</span></td>
+      <td><button class="btn-danger" onclick="removeElement(${e.id})">✕</button></td>
+    </tr>`).join('')}
+  </table>`;
+}
+
+// ==================== LOOP ROWS UI ====================
+function renderLoopRows(){
+  const c=document.getElementById('loopRowsContainer');
+  c.innerHTML=loopRows.map((row,i)=>{
+    const cfg=ROW_CONFIGS[i], on=row.enabled;
+    return `<div class="loop-row${on?'':' disabled'}">
+      <div class="loop-row-head">
+        <div class="loop-num">${i+1}</div>
+        <span class="loop-pos-label">${cfg.label} · ${cfg.side==='left'?'IZQ':'DER'}</span>
+        <button class="loop-toggle${on?' on':''}" onclick="toggleRow(${i})">${on?'● ON':'○ OFF'}</button>
+      </div>
+      ${on?`<div class="loop-fields">
+        <div class="loop-field">
+          <label>🔵 SISTEMA</label>
+          ${ssHtml(i,'system',row.systemId,'system')}
+        </div>
+        <div class="loop-field">
+          <label>🟡 ACCIÓN</label>
+          ${ssHtml(i,'action',row.actionId,'action')}
+        </div>
+        <div class="loop-field" style="grid-column:1/-1">
+          <label>🔴 COSTES<span class="lf-opt"> — recursos (múltiple)</span></label>
+          ${msHtml(i,'cost',row.costIds,'resource')}
+        </div>
+        <div class="loop-field" style="grid-column:1/-1">
+          <label>🟢 RECOMPENSAS<span class="lf-opt"> — recursos (múltiple)</span></label>
+          ${msHtml(i,'reward',row.rewardIds,'resource')}
+        </div>
+      </div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function ssHtml(ri,field,selId,type){
+  const el=selId?getElem(selId):null;
+  return `<div class="single-sel" onclick="openSingle(event,${ri},'${field}','${type}')">
+    ${el?`${el.iconData?`<img class="ss-icon" src="${el.iconData}">`:''}
+      <span class="ss-name">${el.name}</span>
+      <span class="ss-clear" onclick="event.stopPropagation();clearSS(${ri},'${field}')">✕</span>`
+    :`<span class="ss-ph">Seleccionar...</span>`}
+  </div>`;
+}
+
+function msHtml(ri,field,ids,type){
+  const elems=ids.map(id=>getElem(id)).filter(Boolean);
+  return `<div class="multi-sel">
+    <div class="multi-tags">
+      ${elems.map(e=>`<div class="m-tag">
+        ${e.iconData?`<img src="${e.iconData}">`:''}
+        <span>${e.name}</span>
+        <span class="rm" onclick="removeMs(${ri},'${field}',${e.id})">✕</span>
+      </div>`).join('')}
+      <div class="m-add-btn" onclick="openMulti(event,${ri},'${field}','${type}')">+ Añadir</div>
+    </div>
+  </div>`;
+}
+
+function toggleRow(i){loopRows[i].enabled=!loopRows[i].enabled; renderLoopRows();}
+function clearSS(ri,f){loopRows[ri][f+'Id']=null; renderLoopRows();}
+function removeMs(ri,f,id){loopRows[ri][f+'Ids']=loopRows[ri][f+'Ids'].filter(x=>x!==id); renderLoopRows();}
+
+// ==================== DROPDOWN ====================
+function openSingle(event,ri,f,type){
+  event.stopPropagation();
+  const pp=document.getElementById('dropdownPopup');
+  const filtered=elements.filter(e=>e.type===type);
+  const rect=event.currentTarget.getBoundingClientRect();
+  pp.innerHTML=`${!filtered.length?`<div class="dp-empty">Sin ${TYPE_LABELS[type]}</div>`:''}
+    ${filtered.map(e=>`<div class="dp-item" onclick="setSS(${ri},'${f}',${e.id})">
+      ${e.iconData?`<img src="${e.iconData}">`:'<div class="dp-ph">?</div>'}
+      <span>${e.name}</span></div>`).join('')}
+    <div class="dp-remove" onclick="clearSS(${ri},'${f}');closeDD()">✕ Limpiar</div>`;
+  posDD(pp,rect);
+}
+
+function openMulti(event,ri,f,type){
+  event.stopPropagation();
+  const pp=document.getElementById('dropdownPopup');
+  const sel=loopRows[ri][f+'Ids'];
+  const avail=elements.filter(e=>e.type===type&&!sel.includes(e.id));
+  const rect=event.currentTarget.getBoundingClientRect();
+  pp.innerHTML=`${!avail.length?`<div class="dp-empty">No hay más ${TYPE_LABELS[type]}</div>`:''}
+    ${avail.map(e=>`<div class="dp-item" onclick="addMs(${ri},'${f}',${e.id})">
+      ${e.iconData?`<img src="${e.iconData}">`:'<div class="dp-ph">?</div>'}
+      <span>${e.name}</span></div>`).join('')}`;
+  posDD(pp,rect);
+}
+
+function posDD(pp,rect){
+  pp.style.display='block';
+  pp.style.left=rect.left+'px';
+  pp.style.top=(rect.bottom+4)+'px';
+  pp.style.minWidth=Math.max(160,rect.width)+'px';
+}
+function setSS(ri,f,id){loopRows[ri][f+'Id']=id; closeDD(); renderLoopRows();}
+function addMs(ri,f,id){loopRows[ri][f+'Ids'].push(id); closeDD(); renderLoopRows();}
+function closeDD(){document.getElementById('dropdownPopup').style.display='none';}
+document.addEventListener('click',e=>{if(!e.target.closest('#dropdownPopup')&&!e.target.closest('.single-sel')&&!e.target.closest('.m-add-btn')) closeDD();});
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',['elements','loop'][i]===name));
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ==================== CANVAS ====================
+function calcBoxW(n){return n?n*ITEM_W+(n-1)*4+BOX_PAD*2:0}
+
+function calcLayout(side,row){
+  const costs=row.costIds.map(id=>getElem(id)).filter(Boolean);
+  const rewards=row.rewardIds.map(id=>getElem(id)).filter(Boolean);
+  const hc=costs.length>0, ha=!!row.actionId, hr=rewards.length>0;
+  const cw=calcBoxW(costs.length), rw=calcBoxW(rewards.length);
+  const pg=PLAYER_R+14;
+
+  if(side==='right'){
+    let x=CX+pg;
+    const sL=x, sR=x+NODE_S; x=sR+GAP;
+    const cL=x, cR=hc?x+cw:x; if(hc) x=cR+GAP;
+    const aL=x, aR=ha?x+NODE_S:x; if(ha) x=aR+GAP;
+    const rL=x, rR=hr?x+rw:x;
+    return {sL,sR,cL,cR,aL,aR,rL,rR,costs,rewards,hc,ha,hr};
+  } else {
+    let x=CX-pg;
+    const sR=x, sL=x-NODE_S; x=sL-GAP;
+    const cR=x, cL=hc?x-cw:x; if(hc) x=cL-GAP;
+    const aR=x, aL=ha?x-NODE_S:x; if(ha) x=aL-GAP;
+    const rR=x, rL=hr?x-rw:x;
+    return {sL,sR,cL,cR,aL,aR,rL,rR,costs,rewards,hc,ha,hr};
+  }
+}
+
+function renderCanvas(){
+  const canvas=document.getElementById('gameCanvas');
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,CANVAS_W,CANVAS_H);
+
+  // White background
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,CANVAS_W,CANVAS_H);
+
+  // Subtle dot grid
+  ctx.fillStyle='rgba(0,0,0,0.035)';
+  for(let x=50;x<CANVAS_W;x+=50)
+    for(let y=TITLE_H+30;y<CANVAS_H;y+=50)
+      ctx.fillRect(x,y,1.5,1.5);
+
+  drawTitleBar(ctx);
+
+  // Draw rows BEFORE player
+  loopRows.forEach((row,i)=>{
+    if(!row.enabled||!row.systemId) return;
+    drawRow(ctx,row,ROW_CONFIGS[i]);
+  });
+
+  drawPlayer(ctx);
+  drawLegend(ctx);
+}
+
+function drawTitleBar(ctx){
+  // Light gray bar
+  ctx.fillStyle='#f0f2f5';
+  ctx.fillRect(0,0,CANVAS_W,TITLE_H);
+  ctx.strokeStyle='#cccccc'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,TITLE_H); ctx.lineTo(CANVAS_W,TITLE_H); ctx.stroke();
+
+  const gameName=(document.getElementById('gameName').value||'MY GAME').toUpperCase();
+
+  // LEFT: game name
+  ctx.font='bold 24px Orbitron,monospace';
+  ctx.fillStyle='#1a1a2e';
+  ctx.textAlign='left'; ctx.textBaseline='middle';
+  ctx.fillText(gameName,28,TITLE_H/2);
+
+  // RIGHT: small "DIAGRAM" above, "GAME LOOP" below
+  ctx.textAlign='right';
+  ctx.font='600 10px Rajdhani,sans-serif';
+  ctx.fillStyle='#999';
+  ctx.fillText('DIAGRAM',CANVAS_W-28,TITLE_H/2-11);
+  ctx.font='bold 20px Orbitron,monospace';
+  ctx.fillStyle='#1a1a2e';
+  ctx.fillText('GAME LOOP',CANVAS_W-28,TITLE_H/2+9);
+}
+
+function drawPlayer(ctx){
+  // White circle + black border
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.15)'; ctx.shadowBlur=16;
+  ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R,0,Math.PI*2);
+  ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R,0,Math.PI*2);
+  ctx.strokeStyle=C_BLACK; ctx.lineWidth=2.5; ctx.stroke();
+
+  // Avatar icon
+  ctx.save();
+  ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R-3,0,Math.PI*2); ctx.clip();
+  ctx.fillStyle='#e8f0fe'; ctx.fillRect(CX-PLAYER_R,CY-PLAYER_R,PLAYER_R*2,PLAYER_R*2);
+  ctx.fillStyle=C_BLUE;
+  ctx.beginPath(); ctx.arc(CX,CY-14,15,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(CX,CY+34,28,Math.PI,0); ctx.fill();
+  ctx.restore();
+
+  ctx.font='bold 12px Rajdhani,sans-serif';
+  ctx.fillStyle='#333'; ctx.textAlign='center'; ctx.textBaseline='top';
+  ctx.fillText('PLAYER',CX,CY+PLAYER_R+6);
+}
+
+function drawRow(ctx,row,cfg){
+  const {side,y}=cfg;
+  const l=calcLayout(side,row);
+  const sysElem=getElem(row.systemId);
+  const actElem=row.actionId?getElem(row.actionId):null;
+  if(!sysElem) return;
+
+  // Player → System (solid black elbow)
+  const pEdge=side==='right'?CX+PLAYER_R+2:CX-PLAYER_R-2;
+  const sEdge=side==='right'?l.sL:l.sR;
+  drawElbow(ctx,pEdge,CY,sEdge,y,C_BLACK,side);
+
+  // System node (blue)
+  const sCX=side==='right'?l.sL+NODE_S/2:l.sR-NODE_S/2;
+  drawNode(ctx,sCX,y,sysElem,C_BLUE);
+
+  // System → Cost (red line)
+  if(l.hc){
+    const from=side==='right'?l.sR:l.sL;
+    const to  =side==='right'?l.cL:l.cR;
+    drawLineH(ctx,from,y,to,C_RED);
+    drawBox(ctx,l.cL,y-BOX_H/2,calcBoxW(l.costs.length),BOX_H,l.costs,C_RED);
+  }
+
+  // Cost → Action (black)
+  if(l.ha){
+    const from=l.hc?(side==='right'?l.cR:l.cL):(side==='right'?l.sR:l.sL);
+    const to  =side==='right'?l.aL:l.aR;
+    drawLineH(ctx,from,y,to,C_BLACK);
+    const aCX=side==='right'?l.aL+NODE_S/2:l.aR-NODE_S/2;
+    drawNode(ctx,aCX,y,actElem,C_AMBER);
+  }
+
+  // → Reward (green line)
+  if(l.hr){
+    const prev=l.ha?(side==='right'?l.aR:l.aL):l.hc?(side==='right'?l.cR:l.cL):(side==='right'?l.sR:l.sL);
+    const to  =side==='right'?l.rL:l.rR;
+    drawLineH(ctx,prev,y,to,C_GREEN);
+    drawBox(ctx,l.rL,y-BOX_H/2,calcBoxW(l.rewards.length),BOX_H,l.rewards,C_GREEN);
+
+    // Return arrow: reward → player (stops with margin, no canvas edge touch)
+    const rewEdge=side==='right'?l.rR:l.rL;
+    drawReturn(ctx,rewEdge,y,side,C_GREEN);
+  }
+}
+
+// ---- ELBOW from player edge to system ----
+function drawElbow(ctx,x1,y1,x2,y2,color,side){
+  ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([]);
+  if(Math.abs(y1-y2)<4){
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+    drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color); return;
+  }
+  const midX=x1+(x2-x1)*0.45;
+  ctx.beginPath();
+  ctx.moveTo(x1,y1); ctx.lineTo(midX,y1); ctx.lineTo(midX,y2); ctx.lineTo(x2,y2);
+  ctx.stroke();
+  drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color);
+}
+
+// ---- Horizontal line with arrowhead ----
+function drawLineH(ctx,x1,y,x2,color){
+  ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke();
+  drawHead(ctx,x2,y,x2>x1?0:Math.PI,color);
+}
+
+// ---- Return arrow (reward → near player, no canvas wall) ----
+function drawReturn(ctx,rewEdgeX,rowY,side,color){
+  ctx.strokeStyle=color; ctx.fillStyle=color;
+  ctx.lineWidth=2; ctx.setLineDash([]);
+
+  // Outer lane: a few pixels inside canvas edge
+  const lane=side==='right'?CANVAS_W-OUTER_MARGIN:OUTER_MARGIN;
+  // Stop point: near player edge with extra margin
+  const stopX=side==='right'?CX+PLAYER_R+PLAYER_STOP:CX-PLAYER_R-PLAYER_STOP;
+
+  ctx.beginPath();
+  ctx.moveTo(rewEdgeX,rowY);
+  ctx.lineTo(lane,rowY);
+  ctx.lineTo(lane,CY);
+  ctx.lineTo(stopX,CY);
+  ctx.stroke();
+  drawHead(ctx,stopX,CY,side==='right'?Math.PI:0,color);
+}
+
+function drawHead(ctx,x,y,angle,color){
+  const len=10,w=5;
+  ctx.save(); ctx.fillStyle=color;
+  ctx.translate(x,y); ctx.rotate(angle);
+  ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(-len,-w); ctx.lineTo(-len,w);
+  ctx.closePath(); ctx.fill(); ctx.restore();
+}
+
+// ---- Multi-icon box ----
+function drawBox(ctx,x,y,w,h,items,stroke){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.1)'; ctx.shadowBlur=8;
+  rr(ctx,x,y,w,h,10); ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle=stroke; ctx.lineWidth=2.5;
+  rr(ctx,x,y,w,h,10); ctx.stroke();
+
+  if(!items.length) return;
+  const totalW=items.length*ICON_S+(items.length-1)*4;
+  const sx=x+w/2-totalW/2;
+  items.forEach((el,i)=>{
+    const ix=sx+i*(ICON_S+4)+ICON_S/2, iy=y+h/2;
+    if(el&&el.imgObj){
+      drawImg(ctx,el.imgObj,ix-ICON_S/2,iy-ICON_S/2,ICON_S,ICON_S,8);
+    } else {
+      rr(ctx,ix-ICON_S/2,iy-ICON_S/2,ICON_S,ICON_S,8);
+      ctx.fillStyle='rgba(0,0,0,0.05)'; ctx.fill();
+      ctx.font='10px Rajdhani'; ctx.fillStyle='#888';
+      ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(el?el.name.substring(0,5):'?',ix,iy);
     }
+  });
+}
 
-    // Initialize
-    window.onload = function() {
-        renderConfigTable();
-        renderVisualization();
-    };
+// ---- Node ----
+function drawNode(ctx,cx,cy,elem,borderColor){
+  ctx.save();
+  ctx.shadowColor='rgba(0,0,0,0.1)'; ctx.shadowBlur=8;
+  rr(ctx,cx-NODE_S/2,cy-NODE_S/2,NODE_S,NODE_S,12);
+  ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle=borderColor; ctx.lineWidth=2.5;
+  rr(ctx,cx-NODE_S/2,cy-NODE_S/2,NODE_S,NODE_S,12); ctx.stroke();
 
-    function addElement() {
-        const type = document.getElementById('el-type').value;
-        const name = document.getElementById('el-name').value;
-        const fileInput = document.getElementById('el-icon');
+  if(elem.imgObj){
+    drawImg(ctx,elem.imgObj,cx-ICON_S/2,cy-ICON_S/2,ICON_S,ICON_S,9);
+  } else {
+    ctx.font='700 9px Rajdhani'; ctx.fillStyle='#555';
+    ctx.textAlign='center'; ctx.textBaseline='middle';
+    ctx.fillText(elem.name.substring(0,8),cx,cy);
+  }
 
-        if (!name) {
-            alert("Name is required");
-            return;
-        }
+  ctx.font='600 10px Rajdhani,sans-serif'; ctx.fillStyle='#444444';
+  ctx.textAlign='center'; ctx.textBaseline='top';
+  const lbl=elem.name.length>14?elem.name.substring(0,13)+'…':elem.name;
+  ctx.fillText(lbl,cx,cy+NODE_S/2+4);
+}
 
-        const addLogic = (iconUrl) => {
-            const el = { id: generateId(), type, name, icon: iconUrl };
-            state.elements.push(el);
-            renderElementList();
-            renderConfigTable(); // Re-render dropdowns
+function drawImg(ctx,img,x,y,w,h,r){
+  ctx.save(); rr(ctx,x,y,w,h,r); ctx.clip();
+  ctx.drawImage(img,x,y,w,h); ctx.restore();
+}
 
-            // clear inputs
-            document.getElementById('el-name').value = '';
-            document.getElementById('el-icon').value = '';
-        };
+function rr(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y); ctx.lineTo(x+w-r,y); ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r); ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h); ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r); ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
 
-        if (fileInput.files && fileInput.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                addLogic(e.target.result);
-            }
-            reader.readAsDataURL(fileInput.files[0]);
-        } else {
-            // Placeholder icon if none provided
-            addLogic('https://via.placeholder.com/32?text=' + name[0]);
-        }
-    }
+function drawLegend(ctx){
+  const items=[
+    {c:C_BLACK,  l:'Flujo del juego'},
+    {c:C_RED,    l:'Línea de Coste'},
+    {c:C_GREEN,  l:'Línea de Recompensa'},
+    {c:C_BLUE,   l:'Sistema'},
+    {c:C_AMBER,  l:'Acción'},
+  ];
+  const lx=24,ly=CANVAS_H-40,iw=148;
+  ctx.fillStyle='rgba(245,246,248,0.95)';
+  ctx.strokeStyle='#ccc'; ctx.lineWidth=1;
+  rr(ctx,lx-8,ly-8,iw*items.length+16,30,5);
+  ctx.fill(); ctx.stroke();
+  items.forEach((it,i)=>{
+    const ix=lx+i*iw;
+    ctx.strokeStyle=it.c; ctx.lineWidth=2.5; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(ix,ly+7); ctx.lineTo(ix+22,ly+7); ctx.stroke();
+    ctx.fillStyle='#444'; ctx.font='600 11px Rajdhani,sans-serif';
+    ctx.textAlign='left'; ctx.textBaseline='middle';
+    ctx.fillText(it.l,ix+28,ly+7);
+  });
+}
 
-    function removeElement(id) {
-        state.elements = state.elements.filter(e => e.id !== id);
-        renderElementList();
-        renderConfigTable();
-        // Also clear from slots?
-        // Ideally yes, but for simplicity we keep IDs but they won't render.
-        renderVisualization();
-    }
+// ==================== SCALE / DOWNLOAD ====================
+function applyScale(){
+  const s=Math.max(20,Math.min(150,parseInt(document.getElementById('scaleInput').value)||70))/100;
+  const canvas=document.getElementById('gameCanvas');
+  canvas.style.transform=`scale(${s})`;
+  canvas.style.transformOrigin='top left';
+}
 
-    function renderElementList() {
-        const container = document.getElementById('element-list');
-        container.innerHTML = '';
-        state.elements.forEach(el => {
-            const div = document.createElement('div');
-            div.className = 'element-item';
-            div.innerHTML = `
-                <img src="${el.icon}" alt="icon">
-                <strong>${el.type.toUpperCase().substr(0,1)}</strong>: ${el.name}
-                <span class="delete-btn" onclick="removeElement('${el.id}')">×</span>
-            `;
-            container.appendChild(div);
-        });
-    }
+function downloadCanvas(){
+  const canvas=document.getElementById('gameCanvas');
+  const a=document.createElement('a');
+  const name=(document.getElementById('gameName').value||'game_loop').toLowerCase().replace(/\s+/g,'_');
+  a.download=name+'_game_loop.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+}
 
-    function renderConfigTable() {
-        const container = document.getElementById('config-rows');
-        // We don't want to blow away selected values when re-rendering options
-        // But re-creating the DOM is easiest. We just need to check state.slots.
-
-        container.innerHTML = '';
-        state.slots.forEach((slot, index) => {
-            const row = document.createElement('div');
-            row.className = 'config-row';
-
-            // Helper to create select options
-            const createOptions = (type, selectedId) => {
-                const items = state.elements.filter(e => e.type === type);
-                let html = '<option value="">-- None --</option>';
-                items.forEach(item => {
-                    const isSel = item.id === selectedId ? 'selected' : '';
-                    html += `<option value="${item.id}" ${isSel}>${item.name}</option>`;
-                });
-                return html;
-            };
-
-            // Helper for multi-select (checkboxes)
-            const createMultiSelect = (type, selectedIds) => {
-                const items = state.elements.filter(e => e.type === type);
-                if (items.length === 0) return '<div style="font-size:0.8em; color:#999;">No elements</div>';
-                let html = '<div class="multi-select-container">';
-                items.forEach(item => {
-                    const isChecked = selectedIds.includes(item.id) ? 'checked' : '';
-                    html += `
-                        <label class="multi-select-option">
-                            <input type="checkbox"
-                                onchange="updateSlotMulti(${index}, '${type}', '${item.id}', this.checked)"
-                                ${isChecked}>
-                            <img src="${item.icon}" width="16" height="16"> ${item.name}
-                        </label>
-                    `;
-                });
-                html += '</div>';
-                return html;
-            };
-
-            row.innerHTML = `
-                <h4>${slot.label}</h4>
-                <label>System</label>
-                <select onchange="updateSlotSingle(${index}, 'system', this.value)">
-                    ${createOptions('system', slot.system)}
-                </select>
-
-                <label>Costs</label>
-                ${createMultiSelect('cost', slot.costs)}
-
-                <label>Action</label>
-                <select onchange="updateSlotSingle(${index}, 'action', this.value)">
-                    ${createOptions('action', slot.action)}
-                </select>
-
-                <label>Component (Optional)</label>
-                <select onchange="updateSlotSingle(${index}, 'component', this.component)">
-                    ${createOptions('component', slot.component)}
-                </select>
-
-                <label>Rewards</label>
-                ${createMultiSelect('reward', slot.rewards)}
-            `;
-            container.appendChild(row);
-        });
-    }
-
-    function updateSlotSingle(index, field, value) {
-        state.slots[index][field] = value;
-        renderVisualization();
-    }
-
-    function updateSlotMulti(index, type, id, isChecked) {
-        // type will be 'cost' or 'reward', map to 'costs' or 'rewards'
-        const field = type + 's';
-        let arr = state.slots[index][field];
-        if (isChecked) {
-            if (!arr.includes(id)) arr.push(id);
-        } else {
-            arr = arr.filter(x => x !== id);
-        }
-        state.slots[index][field] = arr;
-        renderVisualization();
-    }
-
-    function renderVisualization() {
-        const renderBranch = (slot) => {
-            // Find Objects
-            const system = state.elements.find(e => e.id === slot.system);
-            const action = state.elements.find(e => e.id === slot.action);
-            const component = state.elements.find(e => e.id === slot.component);
-            const costs = slot.costs.map(id => state.elements.find(e => e.id === id)).filter(x => x);
-            const rewards = slot.rewards.map(id => state.elements.find(e => e.id === id)).filter(x => x);
-
-            if (!system) return '<div class="branch" style="opacity:0.3; font-style:italic;">Empty Slot</div>';
-
-            let html = `<div class="branch" id="branch-${slot.id}">`;
-
-            // System
-            html += `<div class="node node-system" id="node-${slot.id}-sys">
-                        <img src="${system.icon}">
-                        <div>${system.name}</div>
-                     </div>`;
-
-            // Cost (Red Box)
-            if (costs.length > 0) {
-                html += `<div class="node-container node-cost" id="node-${slot.id}-cost">`;
-                costs.forEach(c => {
-                    html += `<div class="sub-item"><img src="${c.icon}" title="${c.name}"></div>`;
-                });
-                html += `</div>`;
-            }
-
-            // Action
-            if (action) {
-                html += `<div class="node node-action" id="node-${slot.id}-act">
-                            <img src="${action.icon}">
-                            <div>${action.name}</div>
-                         </div>`;
-            }
-
-            // Component
-            if (component) {
-                html += `<div class="node node-component" id="node-${slot.id}-comp">
-                            <img src="${component.icon}">
-                            <div>${component.name}</div>
-                         </div>`;
-            }
-
-            // Rewards (Green Box)
-            if (rewards.length > 0) {
-                html += `<div class="node-container node-reward" id="node-${slot.id}-rew">`;
-                rewards.forEach(r => {
-                    html += `<div class="sub-item"><img src="${r.icon}" title="${r.name}"></div>`;
-                });
-                html += `</div>`;
-            }
-
-            html += `</div>`;
-            return html;
-        };
-
-        document.getElementById('quad-tl').innerHTML = renderBranch(state.slots[0]) + renderBranch(state.slots[1]);
-        document.getElementById('quad-tr').innerHTML = renderBranch(state.slots[2]) + renderBranch(state.slots[3]);
-        document.getElementById('quad-bl').innerHTML = renderBranch(state.slots[4]) + renderBranch(state.slots[5]);
-        document.getElementById('quad-br').innerHTML = renderBranch(state.slots[6]) + renderBranch(state.slots[7]);
-
-        // Draw Arrows after DOM update
-        // We use requestAnimationFrame to wait for layout to settle
-        requestAnimationFrame(() => {
-           setTimeout(drawArrows, 100);
-        });
-    }
-
-    function drawArrows() {
-        const svg = document.getElementById('arrows-svg');
-        // Clear existing lines but keep defs
-        const defs = svg.querySelector('defs').outerHTML;
-        svg.innerHTML = defs;
-
-        const playerNode = document.getElementById('player-node');
-        if (!playerNode) return;
-        const pRect = playerNode.getBoundingClientRect();
-        const containerRect = document.getElementById('game-loop-container').getBoundingClientRect();
-
-        // Player Center relative to container
-        const pCx = (pRect.left - containerRect.left) + pRect.width / 2;
-        const pCy = (pRect.top - containerRect.top) + pRect.height / 2;
-
-        state.slots.forEach(slot => {
-            const branch = document.getElementById(`branch-${slot.id}`);
-            // Check if branch has content
-            if (!branch || !state.elements.find(e => e.id === slot.system)) return;
-
-            // Get Nodes
-            const sys = document.getElementById(`node-${slot.id}-sys`);
-            const cost = document.getElementById(`node-${slot.id}-cost`);
-            const act = document.getElementById(`node-${slot.id}-act`);
-            const comp = document.getElementById(`node-${slot.id}-comp`);
-            const rew = document.getElementById(`node-${slot.id}-rew`);
-
-            // Chain: Player -> Sys -> Cost -> Act -> (Comp) -> Rew -> Player
-
-            // Helper to get center
-            const getCenter = (el) => {
-                if(!el) return null;
-                const r = el.getBoundingClientRect();
-                return {
-                    x: (r.left - containerRect.left) + r.width / 2,
-                    y: (r.top - containerRect.top) + r.height / 2
-                };
-            };
-
-            const sysC = getCenter(sys);
-            const costC = getCenter(cost);
-            const actC = getCenter(act);
-            const compC = getCenter(comp);
-            const rewC = getCenter(rew);
-
-            // Draw Line Helper
-            const drawLine = (p1, p2, color="#333", width="2", endMarker="url(#arrowhead)") => {
-                if(!p1 || !p2) return;
-                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-                line.setAttribute('x1', p1.x);
-                line.setAttribute('y1', p1.y);
-                line.setAttribute('x2', p2.x);
-                line.setAttribute('y2', p2.y);
-                line.setAttribute('stroke', color);
-                line.setAttribute('stroke-width', width);
-                if (endMarker) line.setAttribute('marker-end', endMarker);
-                svg.appendChild(line);
-            };
-
-            // Player -> System
-            drawLine({x: pCx, y: pCy}, sysC);
-
-            // System -> Cost
-            if(sysC && costC) drawLine(sysC, costC);
-
-            // Cost -> Action
-            if(costC && actC) drawLine(costC, actC);
-
-            // Action -> Comp OR Action -> Reward
-            if (compC && actC) {
-                drawLine(actC, compC);
-                if(rewC) drawLine(compC, rewC);
-            } else if (actC && rewC) {
-                drawLine(actC, rewC);
-            }
-
-            // Reward -> Player (Loop back)
-            if (rewC) {
-                drawLine(rewC, {x: pCx, y: pCy}, "#4caf50", "3");
-            }
-        });
-    }
-
-    function downloadImage() {
-        const element = document.getElementById('game-loop-container');
-        // Need to make sure SVG is rendered. html2canvas handles it mostly.
-        html2canvas(element, { useCORS: true }).then(canvas => {
-            const link = document.createElement('a');
-            link.download = 'game-loop.png';
-            link.href = canvas.toDataURL();
-            link.click();
-        });
-    }
-
-    // Resize observer to redraw arrows if window changes
-    const resizeObserver = new ResizeObserver(() => {
-        drawArrows();
-    });
-    const container = document.getElementById('game-loop-container');
-    if(container) resizeObserver.observe(container);
-
+// ==================== INIT ====================
+renderLoopRows();
+renderCanvas();
+applyScale();
 </script>
-
 </body>
 </html>
