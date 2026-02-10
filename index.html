@@ -579,13 +579,9 @@ function drawRow(ctx,row,cfg){
 // ---- ELBOW from player edge to system ----
 function drawElbow(ctx,x1,y1,x2,y2,color){
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([]);
-  if(Math.abs(y1-y2)<4||Math.abs(x1-x2)<4){
-    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
-    drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color); return;
-  }
-  const midY=y1+(y2-y1)*0.45;
   ctx.beginPath();
-  ctx.moveTo(x1,y1); ctx.lineTo(x1,midY); ctx.lineTo(x2,midY); ctx.lineTo(x2,y2);
+  // Always draw an "L": vertical first, then horizontal at the loop's Y level.
+  ctx.moveTo(x1,y1); ctx.lineTo(x1,y2); ctx.lineTo(x2,y2);
   ctx.stroke();
   drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color);
 }
