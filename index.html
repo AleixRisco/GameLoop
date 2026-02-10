@@ -207,8 +207,9 @@ const PLAYER_R=54;
 const OUTER_MARGIN=44;   // how close to canvas edge the return lane goes
 const PLAYER_STOP=18;    // extra gap between return arrow tip and player circle
 
-const C_BLACK='#222222', C_RED='#cc2200', C_GREEN='#007a35';
-const C_BLUE='#1655cc', C_AMBER='#b86e00';
+const C_BLACK='#222222', C_PLAYER='#1655cc';
+const C_FLOW='#6f3fcf', C_RED='#cc2200', C_GREEN='#007a35';
+const C_SYSTEM='#6d7482', C_AMBER='#b86e00';
 
 // ==================== STATE ====================
 let elements=[], nextId=1, currentIconData=null;
@@ -519,7 +520,7 @@ function drawPlayer(ctx){
   ctx.save();
   ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R-3,0,Math.PI*2); ctx.clip();
   ctx.fillStyle='#e8f0fe'; ctx.fillRect(CX-PLAYER_R,CY-PLAYER_R,PLAYER_R*2,PLAYER_R*2);
-  ctx.fillStyle=C_BLUE;
+  ctx.fillStyle=C_PLAYER;
   ctx.beginPath(); ctx.arc(CX,CY-14,15,0,Math.PI*2); ctx.fill();
   ctx.beginPath(); ctx.arc(CX,CY+34,28,Math.PI,0); ctx.fill();
   ctx.restore();
@@ -536,14 +537,14 @@ function drawRow(ctx,row,cfg){
   const actElem=row.actionId?getElem(row.actionId):null;
   if(!sysElem) return;
 
-  // Player → System (solid black elbow)
-  const pEdge=side==='right'?CX+PLAYER_R+2:CX-PLAYER_R-2;
+  // Player → System (desde arriba/abajo según el cuadrante)
+  const pY=y<CY?CY-PLAYER_R-2:CY+PLAYER_R+2;
   const sEdge=side==='right'?l.sL:l.sR;
-  drawElbow(ctx,pEdge,CY,sEdge,y,C_BLACK,side);
+  drawElbow(ctx,CX,pY,sEdge,y,C_FLOW);
 
   // System node (blue)
   const sCX=side==='right'?l.sL+NODE_S/2:l.sR-NODE_S/2;
-  drawNode(ctx,sCX,y,sysElem,C_BLUE);
+  drawNode(ctx,sCX,y,sysElem,C_SYSTEM);
 
   // System → Cost (red line)
   if(l.hc){
@@ -557,7 +558,7 @@ function drawRow(ctx,row,cfg){
   if(l.ha){
     const from=l.hc?(side==='right'?l.cR:l.cL):(side==='right'?l.sR:l.sL);
     const to  =side==='right'?l.aL:l.aR;
-    drawLineH(ctx,from,y,to,C_BLACK);
+    drawLineH(ctx,from,y,to,C_FLOW);
     const aCX=side==='right'?l.aL+NODE_S/2:l.aR-NODE_S/2;
     drawNode(ctx,aCX,y,actElem,C_AMBER);
   }
@@ -576,15 +577,15 @@ function drawRow(ctx,row,cfg){
 }
 
 // ---- ELBOW from player edge to system ----
-function drawElbow(ctx,x1,y1,x2,y2,color,side){
+function drawElbow(ctx,x1,y1,x2,y2,color){
   ctx.strokeStyle=color; ctx.lineWidth=2; ctx.setLineDash([]);
-  if(Math.abs(y1-y2)<4){
+  if(Math.abs(y1-y2)<4||Math.abs(x1-x2)<4){
     ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
     drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color); return;
   }
-  const midX=x1+(x2-x1)*0.45;
+  const midY=y1+(y2-y1)*0.45;
   ctx.beginPath();
-  ctx.moveTo(x1,y1); ctx.lineTo(midX,y1); ctx.lineTo(midX,y2); ctx.lineTo(x2,y2);
+  ctx.moveTo(x1,y1); ctx.lineTo(x1,midY); ctx.lineTo(x2,midY); ctx.lineTo(x2,y2);
   ctx.stroke();
   drawHead(ctx,x2,y2,x2>x1?0:Math.PI,color);
 }
@@ -665,9 +666,9 @@ function drawNode(ctx,cx,cy,elem,borderColor){
   ctx.save();
   ctx.shadowColor='rgba(0,0,0,0.1)'; ctx.shadowBlur=8;
   rr(ctx,cx-NODE_S/2,cy-NODE_S/2,NODE_S,NODE_S,12);
-  ctx.fillStyle='#ffffff'; ctx.fill();
+  ctx.fillStyle=tintFromStroke(borderColor,0.22); ctx.fill();
   ctx.restore();
-  ctx.strokeStyle=borderColor; ctx.lineWidth=2.5;
+  ctx.strokeStyle=borderColor; ctx.lineWidth=3.5;
   rr(ctx,cx-NODE_S/2,cy-NODE_S/2,NODE_S,NODE_S,12); ctx.stroke();
 
   if(elem.imgObj){
@@ -700,10 +701,10 @@ function rr(ctx,x,y,w,h,r){
 
 function drawLegend(ctx){
   const items=[
-    {c:C_BLACK,  l:'Flujo del juego'},
+    {c:C_FLOW,   l:'Flujo del juego'},
     {c:C_RED,    l:'Línea de Coste'},
     {c:C_GREEN,  l:'Línea de Recompensa'},
-    {c:C_BLUE,   l:'Sistema'},
+    {c:C_SYSTEM, l:'Sistema'},
     {c:C_AMBER,  l:'Acción'},
   ];
   const lx=24,ly=CANVAS_H-40,iw=148;
