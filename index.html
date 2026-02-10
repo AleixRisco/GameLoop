@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Loop Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        :root {
+            --color-bg: #f4f4f9;
+            --color-text: #333;
+            --color-system: #e0e0e0;
+            --color-cost: #ffcccc; /* Red-ish */
+            --color-action: #fff4cc; /* Yellow-ish */
+            --color-component: #e6ccff; /* Purple-ish */
+            --color-reward: #ccffcc; /* Green-ish */
+            --color-player: #ffeb3b; /* Bright Yellow */
+            --border-color: #333;
+            --border-radius: 8px;
+            --spacing: 10px;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: var(--color-bg);
+            color: var(--color-text);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar: Controls */
+        #controls {
+            width: 400px;
+            background: #fff;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+
+        h1, h2, h3 { margin-top: 0; }
+
+        .section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+
+        /* Forms */
+        .form-group { margin-bottom: 10px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="text"], select, input[type="file"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 5px;
+        }
+        button:hover { background: #0056b3; }
+
+        .element-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        .element-item {
+            border: 1px solid #ddd;
+            padding: 5px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            font-size: 0.8em;
+            background: #f9f9f9;
+        }
+        .element-item img {
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            object-fit: contain;
+        }
+        .element-item .delete-btn {
+            margin-left: 5px;
+            color: red;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        /* Configuration Table */
+        .config-row {
+            background: #fdfdfd;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+        .config-row h4 { margin: 0 0 5px 0; font-size: 0.9em; color: #666; }
+        .config-row select { margin-bottom: 5px; font-size: 0.9em; }
+
+        /* Main: Visualization */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #eef;
+            position: relative;
+        }
+
+        #toolbar {
+            padding: 10px;
+            background: #fff;
+            border-bottom: 1px solid #ccc;
+            display: flex;
+            justify-content: flex-end;
+        }
+
+        #canvas-wrapper {
+            flex: 1;
+            overflow: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* The Game Loop Diagram */
+        #game-loop-container {
+            width: 1400px;
+            height: 900px;
+            background: white;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            /* Grid Layout for the 4 quadrants */
+            display: grid;
+            grid-template-columns: 1fr 150px 1fr;
+            grid-template-rows: 1fr 150px 1fr;
+            /*
+               TL (0,0)  Top (0,1)   TR (0,2)
+               Left(1,0) Center(1,1) Right(1,2)
+               BL (2,0)  Bot (2,1)   BR (2,2)
+            */
+        }
+
+        .center-zone {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+        }
+
+        .player-node {
+            width: 120px;
+            height: 120px;
+            background: var(--color-player);
+            border: 3px solid var(--border-color);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 2;
+            position: relative;
+        }
+        .player-node img { width: 60px; height: 60px; margin-bottom: 5px; object-fit: contain; }
+
+        /* Quadrants */
+        .quadrant {
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around; /* Space out the 2 branches */
+        }
+
+        .quadrant-tl { grid-column: 1; grid-row: 1; align-items: flex-end; } /* Top Left */
+        .quadrant-tr { grid-column: 3; grid-row: 1; align-items: flex-start; } /* Top Right */
+        .quadrant-bl { grid-column: 1; grid-row: 3; align-items: flex-end; } /* Bottom Left */
+        .quadrant-br { grid-column: 3; grid-row: 3; align-items: flex-start; } /* Bottom Right */
+
+        /* Branches */
+        .branch {
+            display: flex;
+            align-items: center;
+            gap: 30px; /* Increased gap for arrows */
+            position: relative;
+            margin: 10px 0;
+        }
+
+        /* Direction handling */
+        .quadrant-tl .branch, .quadrant-bl .branch {
+            flex-direction: row-reverse;
+        }
+
+        .quadrant-tr .branch, .quadrant-br .branch {
+            flex-direction: row;
+        }
+
+        /* Nodes in branch */
+        .node {
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 8px;
+            background: white;
+            min-width: 60px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8em;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            z-index: 2;
+        }
+
+        .node img { width: 32px; height: 32px; object-fit: contain; margin-bottom: 2px; }
+
+        .node-system { background: var(--color-system); width: 80px; }
+        .node-action { background: var(--color-action); width: 80px; }
+        .node-component { background: var(--color-component); width: 80px; }
+
+        /* Container Nodes (Cost/Reward) */
+        .node-container {
+            display: flex;
+            gap: 5px;
+            padding: 5px;
+            border-radius: 12px; /* Pill shape container */
+            align-items: center;
+            min-width: 60px;
+            min-height: 50px;
+            justify-content: center;
+            z-index: 2;
+            position: relative;
+        }
+        .node-cost { background: var(--color-cost); border: 2px solid #d32f2f; }
+        .node-reward { background: var(--color-reward); border: 2px solid #388e3c; }
+
+        .sub-item {
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .sub-item img { width: 24px; height: 24px; margin: 0; }
+
+        /* SVG Overlay for Arrows */
+        #arrows-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1; /* Behind nodes */
+        }
+
+        /* Multi-select styling shim */
+        .multi-select-container {
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 5px;
+            background: white;
+        }
+        .multi-select-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 2px 0;
+        }
+        .multi-select-option input { width: auto; }
+
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <h2>Game Loop Builder</h2>
+
+    <div class="section">
+        <h3>1. Create Elements</h3>
+        <div class="form-group">
+            <label>Type</label>
+            <select id="el-type">
+                <option value="system">System</option>
+                <option value="cost">Cost (Red)</option>
+                <option value="action">Action</option>
+                <option value="component">Component</option>
+                <option value="reward">Reward (Green)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Name</label>
+            <input type="text" id="el-name" placeholder="E.g., Gold, Shop, Attack">
+        </div>
+        <div class="form-group">
+            <label>Icon (Square)</label>
+            <input type="file" id="el-icon" accept="image/*">
+        </div>
+        <button onclick="addElement()">Add Element</button>
+
+        <div id="element-list" class="element-list">
+            <!-- Added elements will appear here -->
+        </div>
+    </div>
+
+    <div class="section">
+        <h3>2. Configuration</h3>
+        <div id="config-rows">
+            <!-- 8 Configuration Rows will be generated here -->
+        </div>
+    </div>
+</div>
+
+<div id="main">
+    <div id="toolbar">
+        <button onclick="downloadImage()" style="width: auto; background: #28a745;">Download Image</button>
+    </div>
+    <div id="canvas-wrapper">
+        <div id="game-loop-container">
+            <svg id="arrows-svg">
+                <defs>
+                    <marker id="arrowhead" markerWidth="10" markerHeight="7"
+                    refX="9" refY="3.5" orient="auto">
+                      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+                    </marker>
+                </defs>
+            </svg>
+
+            <!-- Quadrants -->
+            <div class="quadrant quadrant-tl" id="quad-tl"></div>
+            <div class="quadrant quadrant-tr" id="quad-tr"></div>
+            <div class="quadrant quadrant-bl" id="quad-bl"></div>
+            <div class="quadrant quadrant-br" id="quad-br"></div>
+
+            <!-- Center Player -->
+            <div class="center-zone">
+                <div class="player-node" id="player-node">
+                    <span>PLAYER</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // State
+    const state = {
+        elements: [], // { id, type, name, icon }
+        // 8 Slots: 2 TL, 2 TR, 2 BL, 2 BR
+        slots: [
+            { id: 'tl1', label: 'Top Left 1', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'tl2', label: 'Top Left 2', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'tr1', label: 'Top Right 1', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'tr2', label: 'Top Right 2', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'bl1', label: 'Bottom Left 1', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'bl2', label: 'Bottom Left 2', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'br1', label: 'Bottom Right 1', system: null, costs: [], action: null, component: null, rewards: [] },
+            { id: 'br2', label: 'Bottom Right 2', system: null, costs: [], action: null, component: null, rewards: [] }
+        ]
+    };
+
+    // Utils
+    function generateId() {
+        return '_' + Math.random().toString(36).substr(2, 9);
+    }
+
+    // Initialize
+    window.onload = function() {
+        renderConfigTable();
+        renderVisualization();
+    };
+
+    function addElement() {
+        const type = document.getElementById('el-type').value;
+        const name = document.getElementById('el-name').value;
+        const fileInput = document.getElementById('el-icon');
+
+        if (!name) {
+            alert("Name is required");
+            return;
+        }
+
+        const addLogic = (iconUrl) => {
+            const el = { id: generateId(), type, name, icon: iconUrl };
+            state.elements.push(el);
+            renderElementList();
+            renderConfigTable(); // Re-render dropdowns
+
+            // clear inputs
+            document.getElementById('el-name').value = '';
+            document.getElementById('el-icon').value = '';
+        };
+
+        if (fileInput.files && fileInput.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                addLogic(e.target.result);
+            }
+            reader.readAsDataURL(fileInput.files[0]);
+        } else {
+            // Placeholder icon if none provided
+            addLogic('https://via.placeholder.com/32?text=' + name[0]);
+        }
+    }
+
+    function removeElement(id) {
+        state.elements = state.elements.filter(e => e.id !== id);
+        renderElementList();
+        renderConfigTable();
+        // Also clear from slots?
+        // Ideally yes, but for simplicity we keep IDs but they won't render.
+        renderVisualization();
+    }
+
+    function renderElementList() {
+        const container = document.getElementById('element-list');
+        container.innerHTML = '';
+        state.elements.forEach(el => {
+            const div = document.createElement('div');
+            div.className = 'element-item';
+            div.innerHTML = `
+                <img src="${el.icon}" alt="icon">
+                <strong>${el.type.toUpperCase().substr(0,1)}</strong>: ${el.name}
+                <span class="delete-btn" onclick="removeElement('${el.id}')">×</span>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    function renderConfigTable() {
+        const container = document.getElementById('config-rows');
+        // We don't want to blow away selected values when re-rendering options
+        // But re-creating the DOM is easiest. We just need to check state.slots.
+
+        container.innerHTML = '';
+        state.slots.forEach((slot, index) => {
+            const row = document.createElement('div');
+            row.className = 'config-row';
+
+            // Helper to create select options
+            const createOptions = (type, selectedId) => {
+                const items = state.elements.filter(e => e.type === type);
+                let html = '<option value="">-- None --</option>';
+                items.forEach(item => {
+                    const isSel = item.id === selectedId ? 'selected' : '';
+                    html += `<option value="${item.id}" ${isSel}>${item.name}</option>`;
+                });
+                return html;
+            };
+
+            // Helper for multi-select (checkboxes)
+            const createMultiSelect = (type, selectedIds) => {
+                const items = state.elements.filter(e => e.type === type);
+                if (items.length === 0) return '<div style="font-size:0.8em; color:#999;">No elements</div>';
+                let html = '<div class="multi-select-container">';
+                items.forEach(item => {
+                    const isChecked = selectedIds.includes(item.id) ? 'checked' : '';
+                    html += `
+                        <label class="multi-select-option">
+                            <input type="checkbox"
+                                onchange="updateSlotMulti(${index}, '${type}', '${item.id}', this.checked)"
+                                ${isChecked}>
+                            <img src="${item.icon}" width="16" height="16"> ${item.name}
+                        </label>
+                    `;
+                });
+                html += '</div>';
+                return html;
+            };
+
+            row.innerHTML = `
+                <h4>${slot.label}</h4>
+                <label>System</label>
+                <select onchange="updateSlotSingle(${index}, 'system', this.value)">
+                    ${createOptions('system', slot.system)}
+                </select>
+
+                <label>Costs</label>
+                ${createMultiSelect('cost', slot.costs)}
+
+                <label>Action</label>
+                <select onchange="updateSlotSingle(${index}, 'action', this.value)">
+                    ${createOptions('action', slot.action)}
+                </select>
+
+                <label>Component (Optional)</label>
+                <select onchange="updateSlotSingle(${index}, 'component', this.component)">
+                    ${createOptions('component', slot.component)}
+                </select>
+
+                <label>Rewards</label>
+                ${createMultiSelect('reward', slot.rewards)}
+            `;
+            container.appendChild(row);
+        });
+    }
+
+    function updateSlotSingle(index, field, value) {
+        state.slots[index][field] = value;
+        renderVisualization();
+    }
+
+    function updateSlotMulti(index, type, id, isChecked) {
+        // type will be 'cost' or 'reward', map to 'costs' or 'rewards'
+        const field = type + 's';
+        let arr = state.slots[index][field];
+        if (isChecked) {
+            if (!arr.includes(id)) arr.push(id);
+        } else {
+            arr = arr.filter(x => x !== id);
+        }
+        state.slots[index][field] = arr;
+        renderVisualization();
+    }
+
+    function renderVisualization() {
+        const renderBranch = (slot) => {
+            // Find Objects
+            const system = state.elements.find(e => e.id === slot.system);
+            const action = state.elements.find(e => e.id === slot.action);
+            const component = state.elements.find(e => e.id === slot.component);
+            const costs = slot.costs.map(id => state.elements.find(e => e.id === id)).filter(x => x);
+            const rewards = slot.rewards.map(id => state.elements.find(e => e.id === id)).filter(x => x);
+
+            if (!system) return '<div class="branch" style="opacity:0.3; font-style:italic;">Empty Slot</div>';
+
+            let html = `<div class="branch" id="branch-${slot.id}">`;
+
+            // System
+            html += `<div class="node node-system" id="node-${slot.id}-sys">
+                        <img src="${system.icon}">
+                        <div>${system.name}</div>
+                     </div>`;
+
+            // Cost (Red Box)
+            if (costs.length > 0) {
+                html += `<div class="node-container node-cost" id="node-${slot.id}-cost">`;
+                costs.forEach(c => {
+                    html += `<div class="sub-item"><img src="${c.icon}" title="${c.name}"></div>`;
+                });
+                html += `</div>`;
+            }
+
+            // Action
+            if (action) {
+                html += `<div class="node node-action" id="node-${slot.id}-act">
+                            <img src="${action.icon}">
+                            <div>${action.name}</div>
+                         </div>`;
+            }
+
+            // Component
+            if (component) {
+                html += `<div class="node node-component" id="node-${slot.id}-comp">
+                            <img src="${component.icon}">
+                            <div>${component.name}</div>
+                         </div>`;
+            }
+
+            // Rewards (Green Box)
+            if (rewards.length > 0) {
+                html += `<div class="node-container node-reward" id="node-${slot.id}-rew">`;
+                rewards.forEach(r => {
+                    html += `<div class="sub-item"><img src="${r.icon}" title="${r.name}"></div>`;
+                });
+                html += `</div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        };
+
+        document.getElementById('quad-tl').innerHTML = renderBranch(state.slots[0]) + renderBranch(state.slots[1]);
+        document.getElementById('quad-tr').innerHTML = renderBranch(state.slots[2]) + renderBranch(state.slots[3]);
+        document.getElementById('quad-bl').innerHTML = renderBranch(state.slots[4]) + renderBranch(state.slots[5]);
+        document.getElementById('quad-br').innerHTML = renderBranch(state.slots[6]) + renderBranch(state.slots[7]);
+
+        // Draw Arrows after DOM update
+        // We use requestAnimationFrame to wait for layout to settle
+        requestAnimationFrame(() => {
+           setTimeout(drawArrows, 100);
+        });
+    }
+
+    function drawArrows() {
+        const svg = document.getElementById('arrows-svg');
+        // Clear existing lines but keep defs
+        const defs = svg.querySelector('defs').outerHTML;
+        svg.innerHTML = defs;
+
+        const playerNode = document.getElementById('player-node');
+        if (!playerNode) return;
+        const pRect = playerNode.getBoundingClientRect();
+        const containerRect = document.getElementById('game-loop-container').getBoundingClientRect();
+
+        // Player Center relative to container
+        const pCx = (pRect.left - containerRect.left) + pRect.width / 2;
+        const pCy = (pRect.top - containerRect.top) + pRect.height / 2;
+
+        state.slots.forEach(slot => {
+            const branch = document.getElementById(`branch-${slot.id}`);
+            // Check if branch has content
+            if (!branch || !state.elements.find(e => e.id === slot.system)) return;
+
+            // Get Nodes
+            const sys = document.getElementById(`node-${slot.id}-sys`);
+            const cost = document.getElementById(`node-${slot.id}-cost`);
+            const act = document.getElementById(`node-${slot.id}-act`);
+            const comp = document.getElementById(`node-${slot.id}-comp`);
+            const rew = document.getElementById(`node-${slot.id}-rew`);
+
+            // Chain: Player -> Sys -> Cost -> Act -> (Comp) -> Rew -> Player
+
+            // Helper to get center
+            const getCenter = (el) => {
+                if(!el) return null;
+                const r = el.getBoundingClientRect();
+                return {
+                    x: (r.left - containerRect.left) + r.width / 2,
+                    y: (r.top - containerRect.top) + r.height / 2
+                };
+            };
+
+            const sysC = getCenter(sys);
+            const costC = getCenter(cost);
+            const actC = getCenter(act);
+            const compC = getCenter(comp);
+            const rewC = getCenter(rew);
+
+            // Draw Line Helper
+            const drawLine = (p1, p2, color="#333", width="2", endMarker="url(#arrowhead)") => {
+                if(!p1 || !p2) return;
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', p1.x);
+                line.setAttribute('y1', p1.y);
+                line.setAttribute('x2', p2.x);
+                line.setAttribute('y2', p2.y);
+                line.setAttribute('stroke', color);
+                line.setAttribute('stroke-width', width);
+                if (endMarker) line.setAttribute('marker-end', endMarker);
+                svg.appendChild(line);
+            };
+
+            // Player -> System
+            drawLine({x: pCx, y: pCy}, sysC);
+
+            // System -> Cost
+            if(sysC && costC) drawLine(sysC, costC);
+
+            // Cost -> Action
+            if(costC && actC) drawLine(costC, actC);
+
+            // Action -> Comp OR Action -> Reward
+            if (compC && actC) {
+                drawLine(actC, compC);
+                if(rewC) drawLine(compC, rewC);
+            } else if (actC && rewC) {
+                drawLine(actC, rewC);
+            }
+
+            // Reward -> Player (Loop back)
+            if (rewC) {
+                drawLine(rewC, {x: pCx, y: pCy}, "#4caf50", "3");
+            }
+        });
+    }
+
+    function downloadImage() {
+        const element = document.getElementById('game-loop-container');
+        // Need to make sure SVG is rendered. html2canvas handles it mostly.
+        html2canvas(element, { useCORS: true }).then(canvas => {
+            const link = document.createElement('a');
+            link.download = 'game-loop.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+    }
+
+    // Resize observer to redraw arrows if window changes
+    const resizeObserver = new ResizeObserver(() => {
+        drawArrows();
+    });
+    const container = document.getElementById('game-loop-container');
+    if(container) resizeObserver.observe(container);
+
+</script>
+
+</body>
+</html>
