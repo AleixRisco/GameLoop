@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Soft Currency">
+  <circle cx="128" cy="128" r="120" fill="#e6e6e6"/>
+  <circle cx="128" cy="128" r="96" fill="#000"/>
+  <circle cx="128" cy="128" r="92" fill="#f8c14f"/>
+  <ellipse cx="108" cy="86" rx="52" ry="38" fill="#ffdf83" opacity="0.9"/>
+  <ellipse cx="151" cy="155" rx="38" ry="28" fill="#f2a338" opacity="0.6"/>
+  <rect x="114" y="86" width="28" height="84" rx="14" fill="#f19e1e"/>
+  <path d="M188 202c-20 13-55 16-84 8" fill="none" stroke="#e6a63b" stroke-width="8" stroke-linecap="round" opacity="0.35"/>
+</svg>
