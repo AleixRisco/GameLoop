@@ -1,7 +1,27 @@
 [
   {
+    "name": "Game Mode",
+    "icon": "./images/icon_system_game-mode.svg",
+    "type": "system"
+  },
+  {
+    "name": "Hard Currency",
+    "icon": "./images/icon_resource_currency-hard.svg",
+    "type": "resource"
+  },
+  {
     "name": "Soft Currency",
     "icon": "./images/icon_resource_currency-soft.svg",
     "type": "resource"
+  },
+  {
+    "name": "Energy",
+    "icon": "./images/icon_resource_energy.svg",
+    "type": "resource"
+  },
+  {
+    "name": "Play",
+    "icon": "./images/icon_action_play.svg",
+    "type": "action"
   }
 ]
