@@ -1,7 +1,7 @@
 [
   {
     "name": "Soft Currency",
-    "icon": "./images/soft-currency.svg",
+    "icon": "./images/icon_resource_currency-soft.svg",
     "type": "resource"
   }
 ]
