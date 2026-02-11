@@ -242,6 +242,12 @@ function createElementImage(src){
   return img;
 }
 
+const PLAYER_ICON_SRC='./images/icon_player.svg';
+const playerImg=createElementImage(PLAYER_ICON_SRC);
+if(playerImg){
+  playerImg.onload=()=>renderCanvas();
+}
+
 async function loadDefaultElements(){
   try{
     const res=await fetch('./data/elements.json');
@@ -516,13 +522,18 @@ function drawPlayer(ctx){
   ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R,0,Math.PI*2);
   ctx.strokeStyle=C_BLACK; ctx.lineWidth=2.5; ctx.stroke();
 
-  // Avatar icon
+  // Player icon (asset)
   ctx.save();
   ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R-3,0,Math.PI*2); ctx.clip();
-  ctx.fillStyle='#e8f0fe'; ctx.fillRect(CX-PLAYER_R,CY-PLAYER_R,PLAYER_R*2,PLAYER_R*2);
-  ctx.fillStyle=C_PLAYER;
-  ctx.beginPath(); ctx.arc(CX,CY-14,15,0,Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(CX,CY+34,28,Math.PI,0); ctx.fill();
+  ctx.fillStyle='#f2f6ff';
+  ctx.fillRect(CX-PLAYER_R,CY-PLAYER_R,PLAYER_R*2,PLAYER_R*2);
+  if(playerImg&&playerImg.complete&&playerImg.naturalWidth>0){
+    const size=(PLAYER_R-8)*2;
+    ctx.drawImage(playerImg,CX-size/2,CY-size/2,size,size);
+  } else {
+    ctx.fillStyle=C_PLAYER;
+    ctx.beginPath(); ctx.arc(CX,CY,PLAYER_R-14,0,Math.PI*2); ctx.fill();
+  }
   ctx.restore();
 
   ctx.font='bold 12px Rajdhani,sans-serif';
